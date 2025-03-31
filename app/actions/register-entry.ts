@@ -37,7 +37,7 @@ export async function registerEntry (_: unknown, formData: FormData) {
 
   try {
     if ('translation' in entry) {
-      await sql`INSERT INTO translation (portuguese, kimbundu) VALUES (${entry.translation}, ${entry.source})`
+      await sql`INSERT INTO translation (target, source) VALUES (${entry.translation}, ${entry.source})`
     } else {
       await sql`INSERT INTO answer (question, answer) VALUES (${entry.question}, ${entry.answer})`
     }
