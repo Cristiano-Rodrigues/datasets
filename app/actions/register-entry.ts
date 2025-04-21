@@ -1,27 +1,28 @@
 'use server'
 
-import { z } from "zod"
-import { sql } from "../config"
+import { z } from 'zod'
+import { insertQAEntry, insertTranslationEntry } from './repository'
 
 export async function registerEntry (_: unknown, formData: FormData) {
-  const translationType = 'Tradução'
   const TranslationSchema = z.object({
     source: z.string().nonempty(),
     translation: z.string().nonempty()
   })
   const QASchema = z.object({
     question: z.string().nonempty(),
-    answer: z.string()
+    answer: z.string().nonempty()
   })
-  const DataEntrySchema = TranslationSchema.or(QASchema)
 
-  const type = formData.get('type')
-  const data = type == translationType ? {
-    source: formData.get('source'),
-    translation: formData.get('translation')
-  } : {
-    question: formData.get('question'),
-    answer: formData.get('answer')
+  const DataEntrySchema = z.object({
+    structure: z.string(),
+    context: z.string()
+  })
+    .and(TranslationSchema.or(QASchema))
+  
+  const data = {
+    ...getProps(formData),
+    structure: formData.get('structure'),
+    context: formData.get('context')
   }
 
   const parsed = DataEntrySchema.safeParse(data)
@@ -36,11 +37,12 @@ export async function registerEntry (_: unknown, formData: FormData) {
   const entry = parsed.data
 
   try {
-    if ('translation' in entry) {
-      await sql`INSERT INTO translation (target, source) VALUES (${entry.translation}, ${entry.source})`
-    } else {
-      await sql`INSERT INTO answer (question, answer) VALUES (${entry.question}, ${entry.answer})`
+    if ('translation' in entry)
+      await insertTranslationEntry(entry)
+    else {
+      await insertQAEntry(entry)
     }
+    console.log('dados cadastrados com sucesso!')
   } catch (error) {
     console.log(error)
     return {
@@ -52,5 +54,17 @@ export async function registerEntry (_: unknown, formData: FormData) {
   return {
     success: true,
     message: 'Entrada registada com sucesso!'
+  }
+}
+
+function getProps (formData: FormData) {
+  const translationType = 'Tradução'
+
+  return formData.get('type') == translationType ? {
+    source: formData.get('source'),
+    translation: formData.get('translation')
+  } : {
+    question: formData.get('question'),
+    answer: formData.get('answer')
   }
 }
